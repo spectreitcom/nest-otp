@@ -1,0 +1,114 @@
+services:
+  auth_db:
+    image: postgres:18.6-alpine
+    container_name: auth-db
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql
+    networks:
+      - nest_otp_backend_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", '-d', "auth"]
+
+  redis:
+    image: redis:8-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - nest_otp_backend_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - nest_otp_backend_network
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+
+  gateway_service:
+    container_name: gateway-service
+    build:
+      context: .
+    command: npx nest start gateway-service --watch
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - nest_otp_backend_network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - port=3000
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    ports:
+      - '3000:3000'
+
+  auth_service:
+    container_name: auth-service
+    build:
+      context: .
+    command: sh -c "npm run prisma:auth:generate && npx nest start auth-service --watch"
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - nest_otp_backend_network
+    depends_on:
+      auth_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - port=3001
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - DATABASE_URL=postgres://postgres:postgres@auth-db:5432/auth
+      - OTP_SECRET=secret
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=secret
+    ports:
+      - '3001:3000'
+
+  email_service:
+    container_name: email-service
+    build:
+      context: .
+    command: sh -c "npx nest start email-service --watch"
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - nest_otp_backend_network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - port=3002
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    ports:
+      - '3002:3000'
+
+networks:
+  nest_otp_backend_network:
+
+volumes:
+  auth_db_data:
+  redis_data:
+  rabbitmq_data:
