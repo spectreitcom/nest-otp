@@ -3,6 +3,7 @@ import { INestApplication, VersioningType } from '@nestjs/common';
 import request from 'supertest';
 import { GatewayServiceModule } from '../src/gateway-service.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { Server } from 'http';
 
 describe('GatewayService (e2e)', () => {
   let app: INestApplication;
@@ -34,14 +35,14 @@ describe('GatewayService (e2e)', () => {
   });
 
   it('/api (GET)', () => {
-    return request(app.getHttpServer())
+    return request(app.getHttpServer() as Server)
       .get('/api')
       .expect(200)
       .expect('Hello World!');
   });
 
   it('/docs (GET)', () => {
-    return request(app.getHttpServer())
+    return request(app.getHttpServer() as Server)
       .get('/docs')
       .expect((res) => {
         expect([200, 301, 302]).toContain(res.status);
@@ -49,12 +50,13 @@ describe('GatewayService (e2e)', () => {
   });
 
   it('/docs-json (GET)', () => {
-    return request(app.getHttpServer())
+    return request(app.getHttpServer() as Server)
       .get('/docs-json')
       .expect(200)
       .expect((res) => {
-        expect(res.body.openapi).toMatch(/^3\./);
-        expect(res.body.info.title).toBe('Gateway Service');
+        const body = res.body as { openapi: string; info: { title: string } };
+        expect(body.openapi).toMatch(/^3\./);
+        expect(body.info.title).toBe('Gateway Service');
       });
   });
 });

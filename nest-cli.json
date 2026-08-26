@@ -36,7 +36,18 @@
       "sourceRoot": "apps/gateway-service/src",
       "compilerOptions": {
         "tsConfigPath": "apps/gateway-service/tsconfig.app.json",
-        "plugins": ["@nestjs/swagger"]
+        "plugins": [
+          "@nestjs/swagger"
+        ]
+      }
+    },
+    "shared": {
+      "type": "library",
+      "root": "libs/shared",
+      "entryFile": "index",
+      "sourceRoot": "libs/shared/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/shared/tsconfig.lib.json"
       }
     }
   }

@@ -1,0 +1,45 @@
+name: ci.yml
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  CI:
+    name: Lint, Test and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run prisma:auth:generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - run: npx prettier --write .
+
+      - run: npx prettier --check .
+
+      - run: npm run lint
+
+      - run: npm run test
+
+      - run: npm run build
+
