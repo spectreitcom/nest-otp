@@ -25,7 +25,7 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
-    return await firstValueFrom<string>(
+    return await firstValueFrom<{ accessToken: string; refreshToken: string }>(
       this.authService.send('auth.verifyOtp', dto),
     );
   }
