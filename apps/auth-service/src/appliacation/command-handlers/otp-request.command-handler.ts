@@ -39,6 +39,7 @@ export class OtpRequestCommandHandler implements ICommandHandler<
     await this.otpStore.create({
       email,
       codeHash: hashedOtp,
+      challengeId,
     });
 
     this.emailService.emit<{ email: string; code: string }>('emails.send-otp', {

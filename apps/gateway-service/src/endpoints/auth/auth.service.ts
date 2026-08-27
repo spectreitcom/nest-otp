@@ -4,6 +4,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { AUTH_SERVICE } from '../../constants';
 import { firstValueFrom } from 'rxjs';
 import { RequestOtpDto } from './dto/request-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +21,12 @@ export class AuthService {
   async requestOtp(dto: RequestOtpDto) {
     return await firstValueFrom<string>(
       this.authService.send('auth.requestOtp', dto),
+    );
+  }
+
+  async verifyOtp(dto: VerifyOtpDto) {
+    return await firstValueFrom<{ accessToken: string; refreshToken: string }>(
+      this.authService.send('auth.verifyOtp', dto),
     );
   }
 }

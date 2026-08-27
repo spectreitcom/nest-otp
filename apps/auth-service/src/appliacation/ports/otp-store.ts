@@ -7,7 +7,7 @@ export type OtpChallenge = {
 
 export abstract class OtpStore {
   abstract create(
-    data: Pick<OtpChallenge, 'codeHash' | 'email'>,
+    data: Pick<OtpChallenge, 'codeHash' | 'email'> & { challengeId: string },
   ): Promise<void>;
 
   abstract get(challengeId: string): Promise<OtpChallenge | null>;

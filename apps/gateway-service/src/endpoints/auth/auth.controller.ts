@@ -5,10 +5,12 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { AuthService } from './auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -48,5 +50,23 @@ export class AuthController {
   async requestOtp(@Body() dto: RequestOtpDto) {
     const challengeId = await this.authService.requestOtp(dto);
     return { challengeId };
+  }
+
+  @ApiOperation({ summary: 'Verify OTP' })
+  @ApiOkResponse({
+    description: 'OTP verified successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Wrong OTP' })
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  async verifyOtp(@Body() dto: VerifyOtpDto) {
+    return await this.authService.verifyOtp(dto);
   }
 }
