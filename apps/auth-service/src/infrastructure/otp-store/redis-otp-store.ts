@@ -11,8 +11,10 @@ export class RedisOtpStore implements OtpStore, OnModuleDestroy {
     this.redis = new Redis(configService.getOrThrow<string>('REDIS_URL'));
   }
 
-  async create(data: Pick<OtpChallenge, 'codeHash' | 'email'>): Promise<void> {
-    const key = this.getKey(data.email);
+  async create(
+    data: Pick<OtpChallenge, 'codeHash' | 'email'> & { challengeId: string },
+  ): Promise<void> {
+    const key = this.getKey(data.challengeId);
     const payload: OtpChallenge = {
       email: data.email,
       codeHash: data.codeHash,
