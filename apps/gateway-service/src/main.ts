@@ -29,9 +29,12 @@ async function bootstrap() {
     .setDescription('Gateway Service API')
     .setVersion('1.0')
     .addBearerAuth()
+    .setContact('Przemysław Chudziński', '', 'p.chudzinski.spectreit@gmail.com')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('docs', app, document, {
+    customJsStr: 'document.querySelector("html").classList.add("dark-mode")',
+  });
 
   await app.listen(process.env.port ?? 3000);
 }
