@@ -5,7 +5,6 @@ export class VerifyOtpDto {
   @IsString()
   readonly code: string;
 
-  @IsNotEmpty()
   @IsUUID()
   readonly challengeId: string;
 }

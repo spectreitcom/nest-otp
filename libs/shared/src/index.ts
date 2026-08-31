@@ -1,2 +1,3 @@
-export * from './shared.module';
-export * from './shared.service';
+export * from './service-response.interface';
+export * from './service-unavailable-filter';
+export * from './error-mapper';

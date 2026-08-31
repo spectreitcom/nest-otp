@@ -7,16 +7,13 @@ import { TokenService } from '../ports/token.service';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
 import { RefreshTokenStorage } from '../ports/refresh-token-storage';
-
-export type VerifyOtpCommandResponse = {
-  accessToken: string;
-  refreshToken: string;
-};
+import { IServiceResponse } from '@app/shared';
+import { InvalidOtp, TooManyAttempts, UserNotFound } from '../exceptions';
 
 @CommandHandler(VerifyOtpCommand)
 export class VerifyOtpCommandHandler implements ICommandHandler<
   VerifyOtpCommand,
-  VerifyOtpCommandResponse
+  IServiceResponse<{ accessToken: string; refreshToken: string }>
 > {
   constructor(
     private readonly otpStore: OtpStore,
@@ -27,13 +24,15 @@ export class VerifyOtpCommandHandler implements ICommandHandler<
     private readonly refreshTokenStorage: RefreshTokenStorage,
   ) {}
 
-  async execute(command: VerifyOtpCommand): Promise<VerifyOtpCommandResponse> {
+  async execute(
+    command: VerifyOtpCommand,
+  ): Promise<IServiceResponse<{ accessToken: string; refreshToken: string }>> {
     const { code, challengeId } = command;
 
     const otpChallenge = await this.otpStore.get(challengeId);
 
     if (!otpChallenge) {
-      throw new Error('OTP challenge not found');
+      throw new InvalidOtp('OTP challenge not found or expired');
     }
 
     await this.otpStore.incrementAttempts(challengeId);
@@ -45,11 +44,11 @@ export class VerifyOtpCommandHandler implements ICommandHandler<
     );
 
     if (otpChallenge.codeHash !== hashed) {
-      throw new Error('Invalid OTP code');
+      throw new InvalidOtp('Invalid OTP code');
     }
 
     if (otpChallenge.attempts > 5) {
-      throw new Error('Too many attempts');
+      throw new TooManyAttempts('Too many attempts');
     }
 
     const user = await this.prismaService.user.findUnique({
@@ -57,7 +56,7 @@ export class VerifyOtpCommandHandler implements ICommandHandler<
     });
 
     if (!user) {
-      throw new Error('User not found');
+      throw new UserNotFound('User not found');
     }
 
     const accessToken = this.tokenService.createAccessToken(user.id);
@@ -71,8 +70,11 @@ export class VerifyOtpCommandHandler implements ICommandHandler<
     await this.refreshTokenStorage.insert(user.id, refreshTokenId);
 
     return {
-      accessToken,
-      refreshToken,
+      hasError: false,
+      data: {
+        accessToken,
+        refreshToken,
+      },
     };
   }
 }

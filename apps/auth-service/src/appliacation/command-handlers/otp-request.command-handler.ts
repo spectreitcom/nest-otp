@@ -8,11 +8,13 @@ import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common';
 import { EMAIL_SERVICE } from '../../constants';
+import { IServiceResponse } from '@app/shared';
+import { UserNotFound } from '../exceptions';
 
 @CommandHandler(OtpRequestCommand)
 export class OtpRequestCommandHandler implements ICommandHandler<
   OtpRequestCommand,
-  string
+  IServiceResponse<{ challengeId: string }>
 > {
   constructor(
     private readonly otpGenerator: OtpGenerator,
@@ -22,7 +24,9 @@ export class OtpRequestCommandHandler implements ICommandHandler<
     @Inject(EMAIL_SERVICE) private readonly emailService: ClientProxy,
   ) {}
 
-  async execute(command: OtpRequestCommand): Promise<string> {
+  async execute(
+    command: OtpRequestCommand,
+  ): Promise<IServiceResponse<{ challengeId: string }>> {
     const { email } = command;
 
     await this.checkIfUserExist(email);
@@ -47,7 +51,10 @@ export class OtpRequestCommandHandler implements ICommandHandler<
       code,
     });
 
-    return challengeId;
+    return {
+      hasError: false,
+      data: { challengeId },
+    };
   }
 
   private async checkIfUserExist(email: string) {
@@ -56,7 +63,7 @@ export class OtpRequestCommandHandler implements ICommandHandler<
     });
 
     if (!record) {
-      throw new Error('Email already exist');
+      throw new UserNotFound(`User with email ${email} does not exist`);
     }
   }
 }
