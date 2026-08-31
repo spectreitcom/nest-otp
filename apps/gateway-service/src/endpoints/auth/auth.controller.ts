@@ -1,9 +1,11 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiServiceUnavailableResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -28,6 +30,12 @@ export class AuthController {
       },
     },
   })
+  @ApiConflictResponse({
+    description: 'User already exists',
+  })
+  @ApiServiceUnavailableResponse({
+    description: 'Service unavailable',
+  })
   @Post()
   async registerUser(@Body() dto: RegisterUserDto) {
     const id = await this.authService.registerUser(dto);
@@ -45,6 +53,9 @@ export class AuthController {
     },
   })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiServiceUnavailableResponse({
+    description: 'Service unavailable',
+  })
   @Post('request-otp')
   @HttpCode(HttpStatus.OK)
   async requestOtp(@Body() dto: RequestOtpDto) {
@@ -64,6 +75,9 @@ export class AuthController {
     },
   })
   @ApiUnauthorizedResponse({ description: 'Wrong OTP' })
+  @ApiServiceUnavailableResponse({
+    description: 'Service unavailable',
+  })
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() dto: VerifyOtpDto) {
