@@ -7,6 +7,7 @@ import { AuthServiceController } from './auth-service.controller';
 import Joi from 'joi';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { EMAIL_SERVICE } from '../constants';
+import { queryHandlers } from './query-handlers';
 
 const envSchema = Joi.object({
   RABBITMQ_URL: Joi.string().required(),
@@ -45,6 +46,6 @@ const envSchema = Joi.object({
     }),
   ],
   controllers: [AuthServiceController],
-  providers: [...commandHandlers],
+  providers: [...commandHandlers, ...queryHandlers],
 })
 export class AuthServiceModule {}

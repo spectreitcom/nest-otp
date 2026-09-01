@@ -36,6 +36,6 @@ async function bootstrap() {
     customJsStr: 'document.querySelector("html").classList.add("dark-mode")',
   });
 
-  await app.listen(process.env.port ?? 3000);
+  await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap().catch((e) => console.error(e));

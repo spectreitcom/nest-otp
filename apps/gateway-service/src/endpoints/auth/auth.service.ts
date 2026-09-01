@@ -91,4 +91,30 @@ export class AuthService {
 
     return validationResult.data.data;
   }
+
+  async getMe(userId: string) {
+    const response = await firstValueFrom(
+      this.authService
+        .send<
+          IServiceResponse<{ id: string; email: string }>,
+          { userId: string }
+        >('auth.get-me', { userId })
+        .pipe(handleServiceUnavailable()),
+    );
+
+    const schema = serviceResponseSchema(
+      z.object({ id: z.uuid(), email: z.email() }),
+    );
+    const validationResult = schema.safeParse(response);
+
+    if (!validationResult.success) {
+      throw new InternalServerErrorException('Invalid response schema');
+    }
+
+    if (validationResult.data.hasError) {
+      throw errorMapper(validationResult.data);
+    }
+
+    return validationResult.data.data;
+  }
 }
