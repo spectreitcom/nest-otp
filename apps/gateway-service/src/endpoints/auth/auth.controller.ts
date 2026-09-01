@@ -1,8 +1,17 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiServiceUnavailableResponse,
@@ -13,6 +22,8 @@ import { RegisterUserDto } from './dto/register-user.dto';
 import { AuthService } from './auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { Public } from '../../authentication/public.decorator';
+import { CurrentUserId } from '../../authentication/current-user-id.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -36,6 +47,7 @@ export class AuthController {
   @ApiServiceUnavailableResponse({
     description: 'Service unavailable',
   })
+  @Public()
   @Post()
   async registerUser(@Body() dto: RegisterUserDto) {
     const id = await this.authService.registerUser(dto);
@@ -56,6 +68,7 @@ export class AuthController {
   @ApiServiceUnavailableResponse({
     description: 'Service unavailable',
   })
+  @Public()
   @Post('request-otp')
   @HttpCode(HttpStatus.OK)
   async requestOtp(@Body() dto: RequestOtpDto) {
@@ -78,9 +91,30 @@ export class AuthController {
   @ApiServiceUnavailableResponse({
     description: 'Service unavailable',
   })
+  @Public()
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() dto: VerifyOtpDto) {
     return await this.authService.verifyOtp(dto);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get user profile' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiOkResponse({
+    description: '',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        email: { type: 'string' },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @Get('me')
+  async getMe(@CurrentUserId() userId: string) {
+    return await this.authService.getMe(userId);
   }
 }

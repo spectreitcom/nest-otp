@@ -1,7 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { RegisterUserDto } from './dto/register-user.dto';
-import { CommandBus } from '@nestjs/cqrs';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { RegisterUserCommand } from './commands/register-user.command';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { OtpRequestCommand } from './commands/otp-request.command';
@@ -14,12 +14,17 @@ import {
   UserNotFound,
 } from './exceptions';
 import { EServiceErrorCode, IServiceResponse } from '@app/shared';
+import { GetMeDto } from './dto/get-me.dto';
+import { GetMeQuery } from './queries/get-me.query';
 
 @Controller()
 export class AuthServiceController {
   private readonly logger = new Logger(AuthServiceController.name);
 
-  constructor(private readonly commandBus: CommandBus) {}
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
+  ) {}
 
   @MessagePattern('auth.register')
   async registerUser(@Payload() payload: RegisterUserDto) {
@@ -103,6 +108,34 @@ export class AuthServiceController {
         } satisfies IServiceResponse;
       } else if (error instanceof UserNotFound) {
         this.logger.debug(error.message, error.stack);
+        return {
+          hasError: true,
+          code: EServiceErrorCode.NOT_FOUND,
+          errorMessage: 'User not found',
+        } satisfies IServiceResponse;
+      } else if (error instanceof Error) {
+        this.logger.error(error.message, error.stack);
+      } else {
+        this.logger.error('Non-Error thrown during user registration', error);
+      }
+
+      return {
+        hasError: true,
+        code: EServiceErrorCode.INTERNAL_SERVER_ERROR,
+        errorMessage: 'Internal server error',
+      } satisfies IServiceResponse;
+    }
+  }
+
+  @MessagePattern('auth.get-me')
+  async getMe(@Payload() payload: GetMeDto) {
+    try {
+      return await this.queryBus.execute<
+        GetMeQuery,
+        IServiceResponse<{ id: string; email: string }>
+      >(new GetMeQuery(payload.userId));
+    } catch (error) {
+      if (error instanceof UserNotFound) {
         return {
           hasError: true,
           code: EServiceErrorCode.NOT_FOUND,
