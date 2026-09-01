@@ -36,7 +36,7 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
 
-    const payload = await this.jwtService.verifyAsync<{ sub: string }>(token);
+    const payload = await this.verifyToken(token);
 
     const validationResult = tokenPayloadSchema.safeParse(payload);
 
@@ -52,5 +52,13 @@ export class AuthGuard implements CanActivate {
   private extractTokenFromHeader(request: Request): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
     return type === 'Bearer' ? token : undefined;
+  }
+
+  private async verifyToken(token: string) {
+    try {
+      return await this.jwtService.verifyAsync<{ sub: string }>(token);
+    } catch {
+      throw new UnauthorizedException(`Invalid token`);
+    }
   }
 }
