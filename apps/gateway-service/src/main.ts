@@ -2,9 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { GatewayServiceModule } from './gateway-service.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(GatewayServiceModule);
+
+  app.use(helmet());
 
   app.enableCors();
   app.setGlobalPrefix('api');
