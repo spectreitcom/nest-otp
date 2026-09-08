@@ -17,6 +17,8 @@ describe('VerifyOtpCommandHandler', () => {
   let otpStore: {
     get: jest.Mock;
     incrementAttempts: jest.Mock;
+    delete: jest.Mock;
+    consume: jest.Mock;
   };
 
   let otpGenerator: {
@@ -48,6 +50,8 @@ describe('VerifyOtpCommandHandler', () => {
     otpStore = {
       get: jest.fn(),
       incrementAttempts: jest.fn(),
+      delete: jest.fn(),
+      consume: jest.fn().mockResolvedValue(true),
     };
 
     otpGenerator = {
@@ -124,6 +128,7 @@ describe('VerifyOtpCommandHandler', () => {
       code,
       OTP_SECRET,
     );
+    expect(otpStore.consume).toHaveBeenCalledWith(challengeId);
     expect(prismaService.user.findUnique).toHaveBeenCalledWith({
       where: { email },
     });
@@ -219,7 +224,108 @@ describe('VerifyOtpCommandHandler', () => {
 
     // When & Then
     await expect(handler.execute(command)).rejects.toThrow(UserNotFound);
+    expect(otpStore.consume).toHaveBeenCalledWith(challengeId);
     expect(tokenService.createAccessToken).not.toHaveBeenCalled();
     expect(refreshTokenStorage.insert).not.toHaveBeenCalled();
+  });
+
+  it('should throw InvalidOtp when otp challenge consumption fails (already claimed or expired)', async () => {
+    // Given
+    const challengeId = 'challenge-123';
+    const code = '123456';
+    const command = new VerifyOtpCommand(challengeId, code);
+    const codeHash = 'valid-hash';
+
+    otpStore.get.mockResolvedValue({
+      email: 'test@example.com',
+      codeHash,
+      attempts: 1,
+      createdAt: Date.now(),
+    });
+    otpGenerator.hashOtp.mockReturnValue(codeHash);
+    otpStore.consume.mockResolvedValue(false);
+
+    // When & Then
+    await expect(handler.execute(command)).rejects.toThrow(InvalidOtp);
+    expect(otpStore.consume).toHaveBeenCalledWith(challengeId);
+    expect(prismaService.user.findUnique).not.toHaveBeenCalled();
+    expect(tokenService.createAccessToken).not.toHaveBeenCalled();
+    expect(refreshTokenStorage.insert).not.toHaveBeenCalled();
+  });
+
+  it('should produce at most one refresh token when multiple concurrent verification requests are made for the same challenge', async () => {
+    // Given
+    const challengeId = 'challenge-123';
+    const code = '123456';
+    const codeHash = 'valid-hash';
+    const userId = 'user-uuid-123';
+    const email = 'test@example.com';
+    const accessToken = 'access.jwt.token';
+    const refreshToken = 'refresh.jwt.token';
+
+    const otpChallenge: OtpChallenge = {
+      email,
+      attempts: 0,
+      createdAt: Date.now(),
+      codeHash,
+    };
+
+    otpStore.get.mockResolvedValue(otpChallenge);
+    otpGenerator.hashOtp.mockReturnValue(codeHash);
+    prismaService.user.findUnique.mockResolvedValue({
+      id: userId,
+      email,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    tokenService.createAccessToken.mockReturnValue(accessToken);
+    tokenService.createRefreshToken.mockReturnValue(refreshToken);
+
+    // Simulate atomic consume: only the first call succeeds
+    otpStore.consume
+      .mockImplementationOnce(() => Promise.resolve(true))
+      .mockResolvedValue(false);
+
+    const concurrentRequestsCount = 5;
+    const commands = Array.from(
+      { length: concurrentRequestsCount },
+      () => new VerifyOtpCommand(challengeId, code),
+    );
+
+    // When
+    const results = await Promise.allSettled(
+      commands.map((command) => handler.execute(command)),
+    );
+
+    // Then
+    const fulfilled = results.filter(
+      (r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled',
+    );
+    const rejected = results.filter(
+      (r): r is PromiseRejectedResult => r.status === 'rejected',
+    );
+
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(concurrentRequestsCount - 1);
+
+    expect(fulfilled[0].value).toEqual({
+      hasError: false,
+      data: {
+        accessToken,
+        refreshToken,
+      },
+    });
+
+    rejected.forEach((result) => {
+      expect(result.reason).toBeInstanceOf(InvalidOtp);
+    });
+
+    expect(otpStore.consume).toHaveBeenCalledTimes(concurrentRequestsCount);
+    expect(tokenService.createRefreshToken).toHaveBeenCalledTimes(1);
+    expect(refreshTokenStorage.insert).toHaveBeenCalledTimes(1);
+    expect(refreshTokenStorage.insert).toHaveBeenCalledWith(
+      userId,
+      expect.any(String),
+    );
   });
 });

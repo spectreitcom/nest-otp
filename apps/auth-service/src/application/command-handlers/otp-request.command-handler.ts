@@ -1,7 +1,6 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { OtpRequestCommand } from '../commands/otp-request.command';
 import { OtpGenerator } from '../ports/otp-generator';
-import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
 import { OtpStore } from '../ports/otp-store';
 import { ConfigService } from '@nestjs/config';
@@ -9,7 +8,6 @@ import { ClientProxy } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common';
 import { EMAIL_SERVICE } from '../../constants';
 import { IServiceResponse } from '@app/shared';
-import { UserNotFound } from '../exceptions';
 
 @CommandHandler(OtpRequestCommand)
 export class OtpRequestCommandHandler implements ICommandHandler<
@@ -18,7 +16,6 @@ export class OtpRequestCommandHandler implements ICommandHandler<
 > {
   constructor(
     private readonly otpGenerator: OtpGenerator,
-    private readonly prismaService: PrismaService,
     private readonly otpStore: OtpStore,
     private readonly configService: ConfigService,
     @Inject(EMAIL_SERVICE) private readonly emailService: ClientProxy,
@@ -28,8 +25,6 @@ export class OtpRequestCommandHandler implements ICommandHandler<
     command: OtpRequestCommand,
   ): Promise<IServiceResponse<{ challengeId: string }>> {
     const { email } = command;
-
-    await this.checkIfUserExist(email);
 
     const code = this.otpGenerator.generate();
     const challengeId = randomUUID();
@@ -55,15 +50,5 @@ export class OtpRequestCommandHandler implements ICommandHandler<
       hasError: false,
       data: { challengeId },
     };
-  }
-
-  private async checkIfUserExist(email: string) {
-    const record = await this.prismaService.user.findUnique({
-      where: { email },
-    });
-
-    if (!record) {
-      throw new UserNotFound(`User with email ${email} does not exist`);
-    }
   }
 }

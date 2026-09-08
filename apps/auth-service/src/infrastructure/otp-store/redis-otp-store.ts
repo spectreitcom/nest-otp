@@ -57,6 +57,17 @@ export class RedisOtpStore implements OtpStore {
     await this.redisClient.client.del(this.getKey(challengeId));
   }
 
+  async consume(challengeId: string): Promise<boolean> {
+    try {
+      const deleted = await this.redisClient.client.del(
+        this.getKey(challengeId),
+      );
+      return deleted > 0;
+    } catch {
+      return false;
+    }
+  }
+
   async incrementAttempts(challengeId: string): Promise<number> {
     const key = this.getKey(challengeId);
 

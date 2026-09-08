@@ -51,6 +51,12 @@ export class VerifyOtpCommandHandler implements ICommandHandler<
       throw new TooManyAttempts('Too many attempts');
     }
 
+    const consumed = await this.otpStore.consume(challengeId);
+
+    if (!consumed) {
+      throw new InvalidOtp('OTP challenge not found or expired');
+    }
+
     const user = await this.prismaService.user.findUnique({
       where: { email: otpChallenge.email },
     });
