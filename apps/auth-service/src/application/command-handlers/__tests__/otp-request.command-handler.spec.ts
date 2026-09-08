@@ -1,16 +1,9 @@
 import { OtpRequestCommandHandler } from '../otp-request.command-handler';
-import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { OtpStore } from '../../ports/otp-store';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
 import { OtpRequestCommand } from '../../commands/otp-request.command';
-import { randomUUID } from 'node:crypto';
 import { IServiceSuccessResponse } from '@app/shared';
-import { UserNotFound } from '../../exceptions';
-
-jest.mock('../../../../generated/prisma/client', () => ({
-  PrismaClient: class {},
-}));
 
 describe('OtpRequestCommandHandler', () => {
   let handler: OtpRequestCommandHandler;
@@ -18,12 +11,6 @@ describe('OtpRequestCommandHandler', () => {
   let otpGenerator: {
     generate: jest.Mock;
     hashOtp: jest.Mock;
-  };
-
-  let prismaService: {
-    user: {
-      findUnique: jest.Mock;
-    };
   };
 
   let otpStore: {
@@ -46,12 +33,6 @@ describe('OtpRequestCommandHandler', () => {
       hashOtp: jest.fn(),
     };
 
-    prismaService = {
-      user: {
-        findUnique: jest.fn(),
-      },
-    };
-
     otpStore = {
       create: jest.fn(),
     };
@@ -66,7 +47,6 @@ describe('OtpRequestCommandHandler', () => {
 
     handler = new OtpRequestCommandHandler(
       otpGenerator,
-      prismaService as unknown as PrismaService,
       otpStore as unknown as OtpStore,
       configService as unknown as ConfigService,
       emailService as unknown as ClientProxy,
@@ -77,16 +57,9 @@ describe('OtpRequestCommandHandler', () => {
     // Given
     const email = 'test@example.com';
     const command = new OtpRequestCommand(email);
-    const user = {
-      id: randomUUID(),
-      email,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
     const code = '123456';
     const hashedOtp = 'hashed-otp-code';
 
-    prismaService.user.findUnique.mockResolvedValue(user);
     otpGenerator.generate.mockReturnValue(code);
     otpGenerator.hashOtp.mockReturnValue(hashedOtp);
     configService.getOrThrow.mockReturnValue(OTP_SECRET);
@@ -106,9 +79,6 @@ describe('OtpRequestCommandHandler', () => {
 
     const { challengeId } = result.data;
 
-    expect(prismaService.user.findUnique).toHaveBeenCalledWith({
-      where: { email },
-    });
     expect(otpGenerator.generate).toHaveBeenCalledTimes(1);
     expect(configService.getOrThrow).toHaveBeenCalledWith('OTP_SECRET');
     expect(otpGenerator.hashOtp).toHaveBeenCalledWith(
@@ -132,14 +102,15 @@ describe('OtpRequestCommandHandler', () => {
     const email = 'test@example.com';
     const command = new OtpRequestCommand(email);
 
-    prismaService.user.findUnique.mockResolvedValue(null);
+    // When
+    const result = await handler.execute(command);
 
-    // When & Then
-    await expect(handler.execute(command)).rejects.toThrow(UserNotFound);
-
-    expect(otpGenerator.generate).not.toHaveBeenCalled();
-    expect(otpGenerator.hashOtp).not.toHaveBeenCalled();
-    expect(otpStore.create).not.toHaveBeenCalled();
-    expect(emailService.emit).not.toHaveBeenCalled();
+    // Then
+    expect(result).toBeDefined();
+    expect(result.hasError).toBeFalsy();
+    expect(otpGenerator.generate).toHaveBeenCalled();
+    expect(otpGenerator.hashOtp).toHaveBeenCalled();
+    expect(otpStore.create).toHaveBeenCalled();
+    expect(emailService.emit).toHaveBeenCalled();
   });
 });

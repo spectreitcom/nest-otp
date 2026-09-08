@@ -17,6 +17,7 @@ describe('VerifyOtpCommandHandler', () => {
   let otpStore: {
     get: jest.Mock;
     incrementAttempts: jest.Mock;
+    delete: jest.Mock;
   };
 
   let otpGenerator: {
@@ -48,6 +49,7 @@ describe('VerifyOtpCommandHandler', () => {
     otpStore = {
       get: jest.fn(),
       incrementAttempts: jest.fn(),
+      delete: jest.fn(),
     };
 
     otpGenerator = {
