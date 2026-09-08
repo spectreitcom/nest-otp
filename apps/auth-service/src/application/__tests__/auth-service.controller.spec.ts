@@ -8,13 +8,7 @@ import { RegisterUserCommand } from '../commands/register-user.command';
 import { OtpRequestCommand } from '../commands/otp-request.command';
 import { VerifyOtpCommand } from '../commands/verify-otp.command';
 import { GetMeQuery } from '../queries/get-me.query';
-import {
-  InvalidOtp,
-  TooManyAttempts,
-  UserAlreadyExists,
-  UserNotFound,
-} from '../exceptions';
-import { EServiceErrorCode, IServiceResponse } from '@app/shared';
+import { IServiceResponse } from '@app/shared';
 import { randomUUID } from 'node:crypto';
 
 describe('AuthServiceController', () => {
@@ -60,51 +54,16 @@ describe('AuthServiceController', () => {
       expect(result).toEqual(expectedResponse);
     });
 
-    it('should return CONFLICT error response when UserAlreadyExists exception is thrown', async () => {
+    it('should rethrow error when commandBus.execute fails', async () => {
       // Given
-      commandBus.execute.mockRejectedValue(
-        new UserAlreadyExists('User already exists in db'),
+      const error = new Error('Unexpected error');
+      commandBus.execute.mockRejectedValue(error);
+
+      // When & Then
+      await expect(controller.registerUser(payload)).rejects.toThrow(error);
+      expect(commandBus.execute).toHaveBeenCalledWith(
+        new RegisterUserCommand(payload.email),
       );
-
-      // When
-      const result = await controller.registerUser(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.CONFLICT,
-        errorMessage: 'User already exists',
-      });
-    });
-
-    it('should return INTERNAL_SERVER_ERROR response when generic Error is thrown', async () => {
-      // Given
-      commandBus.execute.mockRejectedValue(new Error('Unexpected DB outage'));
-
-      // When
-      const result = await controller.registerUser(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.INTERNAL_SERVER_ERROR,
-        errorMessage: 'Internal server error',
-      });
-    });
-
-    it('should return INTERNAL_SERVER_ERROR response when non-Error object is thrown', async () => {
-      // Given
-      commandBus.execute.mockRejectedValue('Unknown error occurred');
-
-      // When
-      const result = await controller.registerUser(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.INTERNAL_SERVER_ERROR,
-        errorMessage: 'Internal server error',
-      });
     });
   });
 
@@ -132,51 +91,16 @@ describe('AuthServiceController', () => {
       expect(result).toEqual(expectedResponse);
     });
 
-    it('should return NOT_FOUND error response when UserNotFound exception is thrown', async () => {
+    it('should rethrow error when commandBus.execute fails', async () => {
       // Given
-      commandBus.execute.mockRejectedValue(new UserNotFound('User not found'));
+      const error = new Error('Service failure');
+      commandBus.execute.mockRejectedValue(error);
 
-      // When
-      const result = await controller.requestOtp(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.NOT_FOUND,
-        errorMessage: 'User not found',
-      });
-    });
-
-    it('should return INTERNAL_SERVER_ERROR response when generic Error is thrown', async () => {
-      // Given
-      commandBus.execute.mockRejectedValue(
-        new Error('Redis connection failure'),
+      // When & Then
+      await expect(controller.requestOtp(payload)).rejects.toThrow(error);
+      expect(commandBus.execute).toHaveBeenCalledWith(
+        new OtpRequestCommand(payload.email),
       );
-
-      // When
-      const result = await controller.requestOtp(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.INTERNAL_SERVER_ERROR,
-        errorMessage: 'Internal server error',
-      });
-    });
-
-    it('should return INTERNAL_SERVER_ERROR response when non-Error object is thrown', async () => {
-      // Given
-      commandBus.execute.mockRejectedValue({ error: 'fatal' });
-
-      // When
-      const result = await controller.requestOtp(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.INTERNAL_SERVER_ERROR,
-        errorMessage: 'Internal server error',
-      });
     });
   });
 
@@ -211,81 +135,16 @@ describe('AuthServiceController', () => {
       expect(result).toEqual(expectedResponse);
     });
 
-    it('should return BAD_REQUEST error response when InvalidOtp exception is thrown', async () => {
+    it('should rethrow error when commandBus.execute fails', async () => {
       // Given
-      commandBus.execute.mockRejectedValue(new InvalidOtp('Invalid OTP code'));
+      const error = new Error('Service failure');
+      commandBus.execute.mockRejectedValue(error);
 
-      // When
-      const result = await controller.verifyOtp(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.BAD_REQUEST,
-        errorMessage: 'Invalid OTP code',
-      });
-    });
-
-    it('should return BAD_REQUEST error response when TooManyAttempts exception is thrown', async () => {
-      // Given
-      commandBus.execute.mockRejectedValue(
-        new TooManyAttempts('Too many verification attempts'),
+      // When & Then
+      await expect(controller.verifyOtp(payload)).rejects.toThrow(error);
+      expect(commandBus.execute).toHaveBeenCalledWith(
+        new VerifyOtpCommand(payload.challengeId, payload.code),
       );
-
-      // When
-      const result = await controller.verifyOtp(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.BAD_REQUEST,
-        errorMessage: 'Too many verification attempts',
-      });
-    });
-
-    it('should return NOT_FOUND error response when UserNotFound exception is thrown', async () => {
-      // Given
-      commandBus.execute.mockRejectedValue(new UserNotFound('User not found'));
-
-      // When
-      const result = await controller.verifyOtp(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.NOT_FOUND,
-        errorMessage: 'User not found',
-      });
-    });
-
-    it('should return INTERNAL_SERVER_ERROR response when generic Error is thrown', async () => {
-      // Given
-      commandBus.execute.mockRejectedValue(new Error('JWT signing error'));
-
-      // When
-      const result = await controller.verifyOtp(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.INTERNAL_SERVER_ERROR,
-        errorMessage: 'Internal server error',
-      });
-    });
-
-    it('should return INTERNAL_SERVER_ERROR response when non-Error object is thrown', async () => {
-      // Given
-      commandBus.execute.mockRejectedValue(null);
-
-      // When
-      const result = await controller.verifyOtp(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.INTERNAL_SERVER_ERROR,
-        errorMessage: 'Internal server error',
-      });
     });
   });
 
@@ -319,49 +178,16 @@ describe('AuthServiceController', () => {
       expect(result).toEqual(expectedResponse);
     });
 
-    it('should return NOT_FOUND error response when UserNotFound exception is thrown', async () => {
+    it('should rethrow error when queryBus.execute fails', async () => {
       // Given
-      queryBus.execute.mockRejectedValue(new UserNotFound('User not found'));
+      const error = new Error('Query failure');
+      queryBus.execute.mockRejectedValue(error);
 
-      // When
-      const result = await controller.getMe(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.NOT_FOUND,
-        errorMessage: 'User not found',
-      });
-    });
-
-    it('should return INTERNAL_SERVER_ERROR response when generic Error is thrown', async () => {
-      // Given
-      queryBus.execute.mockRejectedValue(new Error('Query execution error'));
-
-      // When
-      const result = await controller.getMe(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.INTERNAL_SERVER_ERROR,
-        errorMessage: 'Internal server error',
-      });
-    });
-
-    it('should return INTERNAL_SERVER_ERROR response when non-Error object is thrown', async () => {
-      // Given
-      queryBus.execute.mockRejectedValue(undefined);
-
-      // When
-      const result = await controller.getMe(payload);
-
-      // Then
-      expect(result).toEqual({
-        hasError: true,
-        code: EServiceErrorCode.INTERNAL_SERVER_ERROR,
-        errorMessage: 'Internal server error',
-      });
+      // When & Then
+      await expect(controller.getMe(payload)).rejects.toThrow(error);
+      expect(queryBus.execute).toHaveBeenCalledWith(
+        new GetMeQuery(payload.userId),
+      );
     });
   });
 });

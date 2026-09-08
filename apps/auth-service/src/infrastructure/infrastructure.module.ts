@@ -10,6 +10,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { TokenService } from '../application/ports/token.service';
 import { JwtTokenService } from './token-service/jwt-token.service';
+import { APP_FILTER } from '@nestjs/core';
+import { ErrorFilter } from './error.filter';
 
 @Module({
   imports: [
@@ -29,6 +31,10 @@ import { JwtTokenService } from './token-service/jwt-token.service';
     { provide: OtpStore, useClass: RedisOtpStore },
     { provide: RefreshTokenStorage, useClass: RedisRefreshTokenStorage },
     { provide: TokenService, useClass: JwtTokenService },
+    {
+      provide: APP_FILTER,
+      useClass: ErrorFilter,
+    },
   ],
   exports: [
     PrismaService,
