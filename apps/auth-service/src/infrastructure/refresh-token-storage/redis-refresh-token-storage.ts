@@ -1,29 +1,31 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { RefreshTokenStorage } from '../../application/ports/refresh-token-storage';
-import { ConfigService } from '@nestjs/config';
-import { Redis } from 'ioredis';
+import { RedisClient } from '@app/shared';
 
 @Injectable()
 export class RedisRefreshTokenStorage
   implements RefreshTokenStorage, OnModuleDestroy
 {
-  private readonly client: Redis;
+  // todo;
+  // private readonly client: Redis;
 
-  constructor(configService: ConfigService) {
-    this.client = new Redis(configService.getOrThrow<string>('REDIS_URL'));
+  constructor(private readonly redisClient: RedisClient) {
+    // this.client = new Redis(configService.getOrThrow<string>('REDIS_URL'));
   }
 
   async insert(userId: string, tokenId: string): Promise<void> {
-    await this.client.set(this.getKey(userId), tokenId);
+    await this.redisClient.client.set(this.getKey(userId), tokenId);
   }
 
   async validate(userId: string, tokenId: string): Promise<boolean> {
-    const storedTokenId = await this.client.get(this.getKey(userId));
+    const storedTokenId = await this.redisClient.client.get(
+      this.getKey(userId),
+    );
     return storedTokenId === tokenId;
   }
 
   async invalidate(userId: string): Promise<void> {
-    await this.client.del(this.getKey(userId));
+    await this.redisClient.client.del(this.getKey(userId));
   }
 
   private getKey(userId: string) {
@@ -31,6 +33,6 @@ export class RedisRefreshTokenStorage
   }
 
   async onModuleDestroy() {
-    await this.client.quit();
+    await this.redisClient.client.quit();
   }
 }

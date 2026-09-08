@@ -12,9 +12,16 @@ import { TokenService } from '../application/ports/token.service';
 import { JwtTokenService } from './token-service/jwt-token.service';
 import { APP_FILTER } from '@nestjs/core';
 import { ErrorFilter } from './error.filter';
+import { RedisModule } from '@app/shared';
 
 @Module({
   imports: [
+    RedisModule.registerAsync({
+      useFactory: (configService: ConfigService) => ({
+        url: configService.getOrThrow<string>('REDIS_URL'),
+      }),
+      inject: [ConfigService],
+    }),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('JWT_SECRET'),
