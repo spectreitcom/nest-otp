@@ -69,6 +69,8 @@ export class VerifyOtpCommandHandler implements ICommandHandler<
 
     await this.refreshTokenStorage.insert(user.id, refreshTokenId);
 
+    await this.otpStore.delete(challengeId);
+
     return {
       hasError: false,
       data: {
