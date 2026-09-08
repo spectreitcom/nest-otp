@@ -11,7 +11,7 @@ export class EmailServiceController {
   constructor(private readonly emailSender: EmailSender) {}
 
   @EventPattern('emails.send-otp')
-  async handleSendOpt(@Payload() data: SendOtpDto) {
+  async handleSendOtp(@Payload() data: SendOtpDto) {
     this.logger.debug('handleSendOpt', data);
     const email = new OtpEmail(data.code);
     await this.emailSender.send(data.email, email);

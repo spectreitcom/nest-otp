@@ -1,18 +1,27 @@
 import { Module } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
-import { OtpGenerator } from '../appliacation/ports/otp-generator';
+import { OtpGenerator } from '../application/ports/otp-generator';
 import { AppOtpGenerator } from './otp-generator/app-otp-generator';
-import { OtpStore } from '../appliacation/ports/otp-store';
+import { OtpStore } from '../application/ports/otp-store';
 import { RedisOtpStore } from './otp-store/redis-otp-store';
-import { RefreshTokenStorage } from '../appliacation/ports/refresh-token-storage';
+import { RefreshTokenStorage } from '../application/ports/refresh-token-storage';
 import { RedisRefreshTokenStorage } from './refresh-token-storage/redis-refresh-token-storage';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { TokenService } from '../appliacation/ports/token.service';
+import { TokenService } from '../application/ports/token.service';
 import { JwtTokenService } from './token-service/jwt-token.service';
+import { APP_FILTER } from '@nestjs/core';
+import { ErrorFilter } from './error.filter';
+import { RedisModule } from '@app/shared';
 
 @Module({
   imports: [
+    RedisModule.registerAsync({
+      useFactory: (configService: ConfigService) => ({
+        url: configService.getOrThrow<string>('REDIS_URL'),
+      }),
+      inject: [ConfigService],
+    }),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('JWT_SECRET'),
@@ -29,6 +38,10 @@ import { JwtTokenService } from './token-service/jwt-token.service';
     { provide: OtpStore, useClass: RedisOtpStore },
     { provide: RefreshTokenStorage, useClass: RedisRefreshTokenStorage },
     { provide: TokenService, useClass: JwtTokenService },
+    {
+      provide: APP_FILTER,
+      useClass: ErrorFilter,
+    },
   ],
   exports: [
     PrismaService,

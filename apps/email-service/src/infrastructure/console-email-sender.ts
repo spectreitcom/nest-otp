@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EmailSender } from '../appliacation/ports/email-sender';
-import { BaseEmail } from '../appliacation/email/types';
+import { EmailSender } from '../application/ports/email-sender';
+import { BaseEmail } from '../application/email/types';
 
 @Injectable()
 export class ConsoleEmailSender implements EmailSender {

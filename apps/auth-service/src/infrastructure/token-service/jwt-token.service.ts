@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TokenService } from '../../appliacation/ports/token.service';
+import { TokenService } from '../../application/ports/token.service';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()

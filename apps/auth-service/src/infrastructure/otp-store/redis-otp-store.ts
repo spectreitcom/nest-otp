@@ -1,15 +1,10 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { OtpChallenge, OtpStore } from '../../appliacation/ports/otp-store';
-import { Redis } from 'ioredis';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
+import { OtpChallenge, OtpStore } from '../../application/ports/otp-store';
+import { RedisClient } from '@app/shared';
 
 @Injectable()
-export class RedisOtpStore implements OtpStore, OnModuleDestroy {
-  private readonly redis: Redis;
-
-  constructor(configService: ConfigService) {
-    this.redis = new Redis(configService.getOrThrow<string>('REDIS_URL'));
-  }
+export class RedisOtpStore implements OtpStore {
+  constructor(private readonly redisClient: RedisClient) {}
 
   async create(
     data: Pick<OtpChallenge, 'codeHash' | 'email'> & { challengeId: string },
@@ -21,45 +16,57 @@ export class RedisOtpStore implements OtpStore, OnModuleDestroy {
       attempts: 0,
       createdAt: Date.now(),
     };
-    await this.redis.setex(key, 300, JSON.stringify(payload));
+
+    await this.redisClient.client
+      .multi()
+      .hset(key, {
+        codeHash: data.codeHash,
+        email: data.email,
+        attempts: payload.attempts,
+        createdAt: payload.createdAt,
+      })
+      .expire(key, 300)
+      .exec();
   }
 
   async get(challengeId: string): Promise<OtpChallenge | null> {
     try {
-      const data = await this.redis.get(this.getKey(challengeId));
-      return data ? (JSON.parse(data) as OtpChallenge) : null;
+      const key = this.getKey(challengeId);
+
+      const codeHash = await this.redisClient.client.hget(key, 'codeHash');
+      const email = await this.redisClient.client.hget(key, 'email');
+      const attempts = await this.redisClient.client.hget(key, 'attempts');
+      const createdAt = await this.redisClient.client.hget(key, 'createdAt');
+
+      const dataExists = codeHash && email && attempts && createdAt;
+
+      if (!dataExists) return null;
+
+      return {
+        codeHash,
+        email,
+        attempts: Number(attempts),
+        createdAt: Number(createdAt),
+      } satisfies OtpChallenge;
     } catch {
       return null;
     }
   }
 
   async delete(challengeId: string): Promise<void> {
-    await this.redis.del(this.getKey(challengeId));
+    await this.redisClient.client.del(this.getKey(challengeId));
   }
 
   async incrementAttempts(challengeId: string): Promise<number> {
     const key = this.getKey(challengeId);
-    const data = await this.get(challengeId);
 
-    if (!data) {
-      return 0;
-    }
+    const currentAttempts = await this.redisClient.client.hget(key, 'attempts');
+    if (!currentAttempts) return 0;
 
-    const updatedOtpChallenge: OtpChallenge = {
-      ...data,
-      attempts: data.attempts + 1,
-    };
-
-    await this.redis.set(key, JSON.stringify(updatedOtpChallenge));
-
-    return updatedOtpChallenge.attempts;
+    return await this.redisClient.client.hincrby(key, 'attempts', 1);
   }
 
   private getKey(challengeId: string): string {
     return `auth:otp:${challengeId}`;
-  }
-
-  async onModuleDestroy() {
-    await this.redis.quit();
   }
 }
