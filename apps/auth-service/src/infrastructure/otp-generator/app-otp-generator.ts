@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { OtpGenerator } from '../../appliacation/ports/otp-generator';
+import { OtpGenerator } from '../../application/ports/otp-generator';
 import { randomInt, createHmac } from 'node:crypto';
 
 @Injectable()

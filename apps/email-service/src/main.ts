@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { EmailServiceModule } from './appliacation/email-service.module';
+import { EmailServiceModule } from './application/email-service.module';
 import { ValidationPipe } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 

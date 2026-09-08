@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { Server } from 'http';
-import { AuthServiceModule } from '../src/appliacation/auth-service.module';
+import { AuthServiceModule } from '../src/application/auth-service.module';
 
 describe('AuthServiceController (e2e)', () => {
   let app: INestApplication;

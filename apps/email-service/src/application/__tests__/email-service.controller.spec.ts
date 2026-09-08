@@ -30,7 +30,7 @@ describe('EmailServiceController', () => {
       emailSender.send.mockResolvedValue(undefined);
 
       // When
-      await controller.handleSendOpt(data);
+      await controller.handleSendOtp(data);
 
       // Then
       expect(emailSender.send).toHaveBeenCalledTimes(1);
@@ -58,7 +58,7 @@ describe('EmailServiceController', () => {
       emailSender.send.mockRejectedValue(error);
 
       // When & Then
-      await expect(controller.handleSendOpt(data)).rejects.toThrow(error);
+      await expect(controller.handleSendOtp(data)).rejects.toThrow(error);
       expect(emailSender.send).toHaveBeenCalledWith(
         data.email,
         expect.any(OtpEmail),

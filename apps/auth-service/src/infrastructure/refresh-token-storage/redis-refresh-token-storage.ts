@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { RefreshTokenStorage } from '../../appliacation/ports/refresh-token-storage';
+import { RefreshTokenStorage } from '../../application/ports/refresh-token-storage';
 import { ConfigService } from '@nestjs/config';
 import { Redis } from 'ioredis';
 

@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { OtpChallenge, OtpStore } from '../../appliacation/ports/otp-store';
+import { OtpChallenge, OtpStore } from '../../application/ports/otp-store';
 import { Redis } from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 

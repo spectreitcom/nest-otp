@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { AuthServiceModule } from './appliacation/auth-service.module';
+import { AuthServiceModule } from './application/auth-service.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ValidationPipe } from '@nestjs/common';
 
