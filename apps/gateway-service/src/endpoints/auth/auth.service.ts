@@ -31,17 +31,9 @@ export class AuthService {
     );
 
     const schema = serviceResponseSchema(z.object({ id: z.uuid() }));
-    const validationResult = schema.safeParse(response);
 
-    if (!validationResult.success) {
-      throw new InternalServerErrorException('Invalid response schema');
-    }
-
-    if (validationResult.data.hasError) {
-      throw errorMapper(validationResult.data);
-    }
-
-    return validationResult.data.data.id;
+    const { id } = this.validateSchema(schema, response);
+    return id;
   }
 
   async requestOtp(dto: RequestOtpDto) {
@@ -54,17 +46,9 @@ export class AuthService {
     );
 
     const schema = serviceResponseSchema(z.object({ challengeId: z.uuid() }));
-    const validationResult = schema.safeParse(response);
 
-    if (!validationResult.success) {
-      throw new InternalServerErrorException('Invalid response schema');
-    }
-
-    if (validationResult.data.hasError) {
-      throw errorMapper(validationResult.data);
-    }
-
-    return validationResult.data.data.challengeId;
+    const { challengeId } = this.validateSchema(schema, response);
+    return challengeId;
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
@@ -79,17 +63,8 @@ export class AuthService {
     const schema = serviceResponseSchema(
       z.object({ accessToken: z.string(), refreshToken: z.string() }),
     );
-    const validationResult = schema.safeParse(response);
 
-    if (!validationResult.success) {
-      throw new InternalServerErrorException('Invalid response schema');
-    }
-
-    if (validationResult.data.hasError) {
-      throw errorMapper(validationResult.data);
-    }
-
-    return validationResult.data.data;
+    return this.validateSchema(schema, response);
   }
 
   async getMe(userId: string) {
@@ -105,6 +80,14 @@ export class AuthService {
     const schema = serviceResponseSchema(
       z.object({ id: z.uuid(), email: z.email() }),
     );
+
+    return this.validateSchema(schema, response);
+  }
+
+  private validateSchema<TData extends Record<string | number, unknown>>(
+    schema: z.ZodSchema<IServiceResponse<TData>>,
+    response: IServiceResponse<TData>,
+  ): TData {
     const validationResult = schema.safeParse(response);
 
     if (!validationResult.success) {

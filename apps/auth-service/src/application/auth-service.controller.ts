@@ -1,4 +1,4 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
@@ -13,8 +13,6 @@ import { GetMeQuery } from './queries/get-me.query';
 
 @Controller()
 export class AuthServiceController {
-  private readonly logger = new Logger(AuthServiceController.name);
-
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
