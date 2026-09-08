@@ -14,5 +14,7 @@ export abstract class OtpStore {
 
   abstract delete(challengeId: string): Promise<void>;
 
+  abstract consume(challengeId: string): Promise<boolean>;
+
   abstract incrementAttempts(challengeId: string): Promise<number>;
 }
